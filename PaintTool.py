@@ -38,6 +38,7 @@ class PaintApp:
         brush_menu.add_command(label="Small", command=lambda: self.set_brush_size(2))
         brush_menu.add_command(label="Medium", command=lambda: self.set_brush_size(5))
         brush_menu.add_command(label="Large", command=lambda: self.set_brush_size(10))
+        brush_menu.add_command(label="Custom", command=self.choose_brush_size)
 
         shape_menu = tk.Menu(menu)
         menu.add_cascade(label="Shape", menu=shape_menu)
@@ -71,7 +72,26 @@ class PaintApp:
             self.drawn_items.append(item)
         elif self.tool in ["rectangle", "oval", "line"]:
             self.points.append((event.x, event.y))
-            self.reset(event)
+            self.create_shape()
+
+    def create_shape(self):
+        if self.tool in ["rectangle", "oval", "line"]:
+            x1, y1 = self.points[0]
+            x2, y2 = self.points[-1]
+            self.canvas.delete("temp")
+            if self.tool == "rectangle":
+                item = self.canvas.create_rectangle(x1, y1, x2, y2, outline=self.pen_color, width=self.brush_size, fill=self.pen_color if self.fill else "")
+            elif self.tool == "oval":
+                item = self.canvas.create_oval(x1, y1, x2, y2, outline=self.pen_color, width=self.brush_size, fill=self.pen_color if self.fill else "")
+            elif self.tool == "line":
+                item = self.canvas.create_line(x1, y1, x2, y2, fill=self.pen_color, width=self.brush_size)
+            self.drawn_items.append(item)
+            self.points = [(x2, y2)]
+
+    def choose_brush_size(self):
+        size = tk.simpledialog.askinteger("Brush size", "Enter brush size:", minvalue=1)
+        if size is not None:
+            self.set_brush_size(size)
 
     def reset(self, event):
         if self.tool in ["rectangle", "oval", "line"]:
