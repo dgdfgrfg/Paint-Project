@@ -1,6 +1,6 @@
 import os
 import tkinter as tk
-from tkinter import colorchooser, filedialog
+from tkinter import colorchooser, filedialog, simpledialog
 from PIL import Image, ImageTk
 from PIL import ImageGrab
 
@@ -8,6 +8,8 @@ class PaintApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Python Paint")
+        self.drawn_items = []
+        self.current_shape = None
 
         self.pen_color = "black"
         self.brush_size = 5
@@ -20,7 +22,7 @@ class PaintApp:
 
         self.canvas.bind("<B1-Motion>", self.paint)
         self.canvas.bind("<ButtonPress-1>", self.on_press)
-        self.canvas.bind("<ButtonRelease-1>", self.reset)
+        self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
         menu = tk.Menu(self.root)
         self.root.config(menu=menu)
@@ -42,11 +44,20 @@ class PaintApp:
 
         shape_menu = tk.Menu(menu)
         menu.add_cascade(label="Shape", menu=shape_menu)
+        shape_menu.add_command(label="Brush", command=lambda: self.set_tool("brush"))
+        shape_menu.add_command(label="Hexagon", command=lambda: self.set_tool("hexagon"))
+        shape_menu.add_command(label="Octagon", command=lambda: self.set_tool("octagon"))
+        shape_menu.add_command(label="Star", command=lambda: self.set_tool("star"))
+        shape_menu.add_command(label="Arrow", command=lambda: self.set_tool("arrow"))
+        shape_menu.add_command(label="Square", command=lambda: self.set_tool("square"))
+        shape_menu.add_command(label="Circle", command=lambda: self.set_tool("circle"))
         shape_menu.add_command(label="Rectangle", command=lambda: self.set_tool("rectangle"))
         shape_menu.add_command(label="Oval", command=lambda: self.set_tool("oval"))
         shape_menu.add_command(label="Line", command=lambda: self.set_tool("line"))
+        shape_menu.add_command(label="Triangle", command=lambda: self.set_tool("triangle"))
         shape_menu.add_separator()
         shape_menu.add_checkbutton(label="Fill", variable=tk.BooleanVar(value=self.fill), command=self.toggle_fill)
+
 
         self.status_bar = tk.Label(self.root, text="Tool: Brush | Brush Size: " + str(self.brush_size) + " | Color: " + self.pen_color, bd=1, relief=tk.SUNKEN, anchor=tk.W)
         self.status_bar.pack(side=tk.BOTTOM, fill=tk.X)
@@ -61,85 +72,159 @@ class PaintApp:
             button.pack(side=tk.LEFT, padx=1, pady=1)
         self.drawn_items = []
 
-    def on_press(self, event):
-        self.points = [(event.x, event.y)]
-
-    def paint(self, event):
-        if self.tool == "brush":
-            item = self.canvas.create_oval(event.x - self.brush_size, event.y - self.brush_size,
-                                           event.x + self.brush_size, event.y + self.brush_size,
-                                           fill=self.pen_color, outline=self.pen_color)
-            self.drawn_items.append(item)
-        elif self.tool in ["rectangle", "oval", "line"]:
-            self.points.append((event.x, event.y))
-            self.create_shape()
-
-    def create_shape(self):
-        if self.tool in ["rectangle", "oval", "line"]:
-            x1, y1 = self.points[0]
-            x2, y2 = self.points[-1]
-            self.canvas.delete("temp")
-            if self.tool == "rectangle":
-                item = self.canvas.create_rectangle(x1, y1, x2, y2, outline=self.pen_color, width=self.brush_size, fill=self.pen_color if self.fill else "")
-            elif self.tool == "oval":
-                item = self.canvas.create_oval(x1, y1, x2, y2, outline=self.pen_color, width=self.brush_size, fill=self.pen_color if self.fill else "")
-            elif self.tool == "line":
-                item = self.canvas.create_line(x1, y1, x2, y2, fill=self.pen_color, width=self.brush_size)
-            self.drawn_items.append(item)
-            self.points = [(x2, y2)]
-
-    def choose_brush_size(self):
-        size = tk.simpledialog.askinteger("Brush size", "Enter brush size:", minvalue=1)
-        if size is not None:
-            self.set_brush_size(size)
-
-    def reset(self, event):
-        if self.tool in ["rectangle", "oval", "line"]:
-            x1, y1 = self.points[0]
-            x2, y2 = event.x, event.y
-            self.canvas.delete("temp")
-            if self.tool == "rectangle":
-                self.canvas.create_rectangle(x1, y1, x2, y2, outline=self.pen_color, width=self.brush_size, fill=self.pen_color if self.fill else "", tags="temp")
-            elif self.tool == "oval":
-                self.canvas.create_oval(x1, y1, x2, y2, outline=self.pen_color, width=self.brush_size, fill=self.pen_color if self.fill else "", tags="temp")
-            elif self.tool == "line":
-                self.canvas.create_line(x1, y1, x2, y2, fill=self.pen_color, width=self.brush_size, tags="temp")
-
-        if event.type == "4":  # ButtonRelease event
-            self.canvas.delete("temp")
-            if self.tool in ["rectangle", "oval", "line"]:
-                x1, y1 = self.points[0]
-                x2, y2 = event.x, event.y
-                if self.tool == "rectangle":
-                    item = self.canvas.create_rectangle(x1, y1, x2, y2, outline=self.pen_color, width=self.brush_size, fill=self.pen_color if self.fill else "")
-                elif self.tool == "oval":
-                    item = self.canvas.create_oval(x1, y1, x2, y2, outline=self.pen_color, width=self.brush_size, fill=self.pen_color if self.fill else "")
-                elif self.tool == "line":
-                    item = self.canvas.create_line(x1, y1, x2, y2, fill=self.pen_color, width=self.brush_size)
-                self.drawn_items.append(item)
-                self.points = []
-
-    def choose_color(self):
-        self.pen_color = colorchooser.askcolor(color=self.pen_color)[1]
-        self.status_bar.config(text="Tool: " + self.tool.capitalize() + " | Brush Size: " + str(self.brush_size) + " | Color: " + self.pen_color)
-
-    def use_eraser(self):
-        self.pen_color = "white"
-
-    def set_brush_size(self, size):
-        self.brush_size = size
-        self.status_bar.config(text="Tool: " + self.tool.capitalize() + " | Brush Size: " + str(self.brush_size) + " | Color: " + self.pen_color)
-
-    def set_pen_color(self, col):
-        self.pen_color = col
-        self.status_bar.config(text="Tool: " + self.tool.capitalize() + " | Brush Size: " + str(self.brush_size) + " | Color: " + self.pen_color)
+    def set_pen_color(self, color):
+        self.pen_color = color
+        self.status_bar.config(text=f"Tool: {self.tool} | Brush Size: {self.brush_size} | Color: {self.pen_color}")
 
     def set_tool(self, tool):
         self.tool = tool
-        self.status_bar.config(text="Tool: " + self.tool.capitalize() + " | Brush Size: " + str(self.brush_size) + " | Color: " + self.pen_color)
+        self.status_bar.config(text=f"Tool: {self.tool} | Brush Size: {self.brush_size} | Color: {self.pen_color}")
+
+    def choose_color(self):
+        color = colorchooser.askcolor(color=self.pen_color)[1]
+        if color:
+            self.set_pen_color(color)
+
+    def set_brush_size(self, size):
+        self.brush_size = size
+        self.status_bar.config(text=f"Tool: {self.tool} | Brush Size: {self.brush_size} | Color: {self.pen_color}")
+
+    def choose_brush_size(self):
+        size = simpledialog.askinteger("Brush Size", "Enter brush size:", minvalue=1, maxvalue=100, initialvalue=self.brush_size)
+        if size:
+            self.set_brush_size(size)
+
+    def use_eraser(self):
+        self.set_pen_color("white")
+
+    def on_press(self, event):
+        self.points = [(event.x, event.y)]
+        if self.tool != "brush":
+            self.current_shape = None
+
+    def on_release(self, event):
+        if self.tool != "brush" and self.current_shape:
+            self.drawn_items.append(self.current_shape)
+            self.current_shape = None
+        self.points = []
+
+    def paint(self, event):
+        if self.tool == "brush":
+            self.canvas.create_line(self.points[-1], (event.x, event.y), width=self.brush_size, fill=self.pen_color, capstyle=tk.ROUND, smooth=True)
+            self.points.append((event.x, event.y))
+        else:
+            self.points.append((event.x, event.y))
+            if len(self.points) >= 2:
+                self.resize_shape()
+                self.points.pop()
+
+    def resize_shape(self):
+        start_x, start_y = self.points[0]
+        end_x, end_y = self.points[1]
+        coords = (start_x, start_y, end_x, end_y)
+
+        if self.fill:
+            fill = self.pen_color
+        else:
+            fill = ""
+
+        if self.current_shape:
+            self.canvas.delete(self.current_shape)
+
+        if self.tool == "line":
+            shape = self.canvas.create_line(coords, width=self.brush_size, fill=self.pen_color, capstyle=tk.ROUND)
+        elif self.tool == "square":
+            shape = self.canvas.create_rectangle(coords, width=self.brush_size, outline=self.pen_color, fill=fill)
+        elif self.tool == "octagon":
+            shape = self.create_octagon(coords, width=self.brush_size, outline=self.pen_color, fill=fill)
+
+        elif self.tool == "circle":
+            shape = self.canvas.create_oval(coords, width=self.brush_size, outline=self.pen_color, fill=fill)
+        elif self.tool == "rectangle":
+            shape = self.canvas.create_rectangle(coords, width=self.brush_size, outline=self.pen_color, fill=fill)
+        elif self.tool == "oval":
+            shape = self.canvas.create_oval(coords, width=self.brush_size, outline=self.pen_color, fill=fill)
+        elif self.tool == "triangle":
+            x1, y1, x2, y2 = coords
+            x3, y3 = x1, y2
+            shape = self.canvas.create_polygon((x1, y1, x2, y2, x3, y3), width=self.brush_size, outline=self.pen_color, fill=fill)
+        elif self.tool == "hexagon":
+            shape = self.create_hexagon(coords, width=self.brush_size, outline=self.pen_color, fill=fill)
+        elif self.tool == "star":
+            shape = self.create_star(coords, width=self.brush_size, outline=self.pen_color, fill=fill)
+        elif self.tool == "arrow":
+            shape = self.create_arrow(coords, width=self.brush_size, outline=self.pen_color, fill=fill)
+
+        self.current_shape = shape
+
+    def create_hexagon(self, coords, **kwargs):
+        x1, y1, x2, y2 = coords
+        width = x2 - x1
+        height = y2 - y1
+        dx = width / 4
+        dy = height / 2
+
+        hexagon_points = (
+            x1 + dx, y1,
+            x1 + 3 * dx, y1,
+            x2, y1 + dy,
+            x1 + 3 * dx, y2,
+            x1 + dx, y2,
+            x1, y1 + dy
+        )
+        return self.canvas.create_polygon(hexagon_points, **kwargs)
+
+    def create_star(self, coords, **kwargs):
+        x1, y1, x2, y2 = coords
+        x_mid = (x1 + x2) / 2
+        y_mid = (y1 + y2) / 2
+
+        star_points = (x_mid, y1, x2, y2, x1, y2)
+        return self.canvas.create_polygon(star_points, **kwargs)
+
+    def create_arrow(self, coords, **kwargs):
+        x1, y1, x2, y2 = coords
+        width = x2 - x1
+        height = y2 - y1
+        dx = width / 3
+        dy = height / 6
+
+        arrow_points = (
+            x1, y1 + 2 * dy,
+            x1 + 2 * dx, y1 + 2 * dy,
+            x1 + 2 * dx, y1,
+            x2, y1 + height / 2,
+            x1 + 2 * dx, y2,
+            x1 + 2 * dx, y1 + 4 * dy,
+            x1, y1 + 4 * dy
+        )
+        return self.canvas.create_polygon(arrow_points, **kwargs)
+    
+    def create_octagon(self, coords, **kwargs):
+        x1, y1, x2, y2 = coords
+        width = x2 - x1
+        height = y2 - y1
+        dx = width / 4
+        dy = height / 4
+
+        octagon_points = (
+            x1 + dx, y1,
+            x1 + 3 * dx, y1,
+            x2, y1 + dy,
+            x2, y1 + 3 * dy,
+            x1 + 3 * dx, y2,
+            x1 + dx, y2,
+            x1, y1 + 3 * dy,
+            x1, y1 + dy
+        )
+        return self.canvas.create_polygon(octagon_points, **kwargs)
+
+    def reset(self, event):
+        self.points = []
 
     def toggle_fill(self):
         self.fill = not self.fill
+
 
     def save(self):
         file = filedialog.asksaveasfilename(defaultextension=".png",
@@ -156,8 +241,8 @@ class PaintApp:
 
     def undo(self):
         if self.drawn_items:
-            self.canvas.delete(self.drawn_items[-1])
-            self.drawn_items.pop()
+            item = self.drawn_items.pop()
+            self.canvas.delete(item)
 
 if __name__ == "__main__":
     root = tk.Tk()
